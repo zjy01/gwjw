@@ -13,18 +13,16 @@ import {
     ToastAndroid,
     TouchableOpacity
 } from 'react-native';
-var querystring=require('querystring');
 
 const Dimensions = require('Dimensions');
 const {height, width} = Dimensions.get('window');
-import LOGO from './../img/gdufs.jpg'
+import LOGO from './../img/gwjw.png'
 import {__HOST__} from './../conf'
-import Toast from "./toast"
 export  default class Login extends Component{
     constructor(props,context){
         super(props, context);
         this.state={
-            username:"",
+            username:this.props.username,
             password:""
         };
     }
@@ -36,6 +34,7 @@ export  default class Login extends Component{
                     <Text style={styles.loginText}>登录</Text>
                     <TextInput style={styles.input}
                                keyboardType="numeric"
+                               defaultValue={this.state.username}
                                autoFocus={true}
                                placeholder='学号'
                                onChangeText={(username) =>this.setState({username})}
@@ -50,7 +49,7 @@ export  default class Login extends Component{
                     <Text style={styles.tips}>
                         请使用数字广外帐号、密码登录
                     </Text>
-                    <TouchableOpacity style={styles.btn} onPress={this.handelLogin.bind(this)}>
+                    <TouchableOpacity style={styles.btn} onPress={this.handleTouch.bind(this)}>
                         <Text style={styles.btntext}>登录</Text>
                     </TouchableOpacity>
                 </View>
@@ -58,43 +57,8 @@ export  default class Login extends Component{
             </View>
         );
     }
-    handelLogin(){
-        if(this.state.username.trim().length<9) {
-            return this.toastShow("学号长度不正确");
-        }
-        else if(this.state.password.trim().length==0){
-            return this.toastShow("密码不能为空");
-        }
-        const option = {
-            method:"POST",
-            headers:{
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body:querystring.stringify({username:this.state.username, password: this.state.password})
-        };
-
-        fetch(__HOST__ + "/users/login", option)
-        .then((res) => {
-            console.log(res);
-            if(res.ok){
-                return res.json()
-            }
-            else{
-                throw "网络请求失败";
-            }
-        })
-        .then(json=>{
-            console.log(json);
-            if(json.status){
-                this.props.doLogin(json.data);
-            }
-            else{
-                this.toastShow("帐号或密码不正确");
-            }
-        })
-        .catch(err =>{
-            this.toastShow(err);
-        })
+    handleTouch(){
+        this.props.handelLogin(this.state.username, this.state.password);
     }
     toastShow(text){
         if(typeof text == 'string')

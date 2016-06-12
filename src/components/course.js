@@ -13,11 +13,10 @@ import {
     ListView
 } from 'react-native';
 var querystring=require('querystring');
-
-const Dimensions = require('Dimensions');
-const {height, width} = Dimensions.get('window');
+//
+//const Dimensions = require('Dimensions');
+//const {height, width} = Dimensions.get('window');
 import {__HOST__} from './../conf'
-import Toast from "./toast"
 import Load from './loading'
 export  default class Course extends Component{
 
@@ -28,27 +27,28 @@ export  default class Course extends Component{
             dataSource: new ListView.DataSource({
                 rowHasChanged: (row1, row2) => row1 !== row2
             }),
-            selected:null,
             options:[]
         };
+
+        this.selected = null;
     }
     componentDidMount(){
         console.log('did');
         this.fetchOption();
-        //this.fetchData();
+        this.fetchData();
     }
-    componentWillUpdate(nextProps, nextState){
-        if(this.state.selected != nextState.selected){
-            this.fetchData(nextState.selected);
-        }
-    }
+    //componentWillUpdate(nextProps, nextState){
+    //    if(this.state.selected != nextState.selected){
+    //        this.fetchData(nextState.selected);
+    //    }
+    //}
     render(){
         return(
             <View style={styles.container}>
                 <View style={styles.picker}>
                     <Picker
-                        //selectedValue={this.state.selected}
-                        //onValueChange={(selected) => this.setState({selected})}
+                        selectedValue={this.selected}
+                        onValueChange={(selected) => this.fetchData.bind(this)(selected)}
                         mode="dropdown">
                         {
                             this.state.options.map((v,i)=>{
@@ -57,21 +57,23 @@ export  default class Course extends Component{
                         }
                     </Picker>
                 </View>
-                {this.state.isLoading
-                    ?<Load />
-                    :this.renderAllList()}
+                { this.state.isLoading
+                    ?<Load>Data is loading!</Load>
+                    :this.renderAllList()
+                }
             </View>
         );
     }
     fetchData(selected){
+        this.selected = selected;
         const param = {
             token: this.props.token,
             xq: selected || null
         };
-        console.log('in fetch data');
         this.setState({
             isLoading: true
         });
+
         fetch(__HOST__ + "/users/getCourse?"+ querystring.stringify(param))
             .then((res) => {
                 if(res.ok){
@@ -87,10 +89,15 @@ export  default class Course extends Component{
                     if(json.data.length == 0){
                         this.toastShow("教务系统抓取不到课表数据");
                     }
-                    this.setState({
-                        dataSource: this.state.dataSource.cloneWithRows(json.data),
-                        isLoading: false
-                    });
+                    else{
+                        let dataSource = new ListView.DataSource({
+                            rowHasChanged: (row1, row2) => row1 !== row2
+                        });
+                        this.setState({
+                            dataSource: dataSource.cloneWithRows(json.data),
+                            isLoading: false
+                        });
+                    }
                 }
                 else{
                     this.toastShow(json.info);
@@ -117,9 +124,9 @@ export  default class Course extends Component{
             .then(json=>{
                 console.log(json);
                 if(json.status){
+                    this.selected = json.data.selected;
                     this.setState({
-                      options:json.data.options,
-                        selected:json.data.selected
+                      options:json.data.options
                     });
                 }
                 else{
@@ -133,17 +140,12 @@ export  default class Course extends Component{
     renderAllList(){
         return(
         <ScrollView>
-
-            {this.state.dataSource._cachedRowCount > 0 &&
-               <View>
-                   {this.renderHeader()}
+            {this.renderHeader()}
                 <ListView
                 dataSource={this.state.dataSource}
                 renderRow={this.renderList}
                 style={styles.courseTable}
                 />
-               </View>
-            }
         </ScrollView>
         );
     }

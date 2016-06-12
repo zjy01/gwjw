@@ -20,7 +20,7 @@ export  default class Load extends Component{
     render(){
         return(
             <View style={styles.container}>
-                <Text>Data is loading!</Text>
+                <Text>{this.props.children}</Text>
             </View>
         );
     }
