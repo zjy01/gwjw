@@ -13,10 +13,8 @@ import {
     ListView
 } from 'react-native';
 var querystring=require('querystring');
-//
-//const Dimensions = require('Dimensions');
-//const {height, width} = Dimensions.get('window');
-import {__HOST__} from './../conf'
+
+import Gwxk from '../lib/gwxk'
 import Load from './loading'
 export  default class Course extends Component{
 
@@ -27,21 +25,15 @@ export  default class Course extends Component{
             dataSource: new ListView.DataSource({
                 rowHasChanged: (row1, row2) => row1 !== row2
             }),
-            options:[]
+            options:[],
+            loadMsg:''
         };
 
         this.selected = null;
     }
     componentDidMount(){
-        console.log('did');
-        this.fetchOption();
-        this.fetchData();
+        this.fetchLoad();
     }
-    //componentWillUpdate(nextProps, nextState){
-    //    if(this.state.selected != nextState.selected){
-    //        this.fetchData(nextState.selected);
-    //    }
-    //}
     render(){
         return(
             <View style={styles.container}>
@@ -58,7 +50,7 @@ export  default class Course extends Component{
                     </Picker>
                 </View>
                 { this.state.isLoading
-                    ?<Load>Data is loading!</Load>
+                    ?<Load>{this.state.loadMsg}</Load>
                     :this.renderAllList()
                 }
             </View>
@@ -67,75 +59,73 @@ export  default class Course extends Component{
     fetchData(selected){
         this.selected = selected;
         const param = {
-            token: this.props.token,
             xq: selected || null
         };
         this.setState({
-            isLoading: true
+            isLoading: true,
+            loadMsg:''
         });
 
-        fetch(__HOST__ + "/users/getCourse?"+ querystring.stringify(param))
-            .then((res) => {
-                if(res.ok){
-                    return res.json()
+        Gwxk.getCourse(param)
+        .then(json => {
+            //课表信息
+            if(json.data.length == 0){
+                throw "教务系统抓取不到课表数据";
+            }
+            else{
+                let dataSource = new ListView.DataSource({
+                    rowHasChanged: (row1, row2) => row1 !== row2
+                });
+                this.setState({
+                    dataSource: dataSource.cloneWithRows(json.data),
+                    isLoading: false
+                });
+            }
+        })
+            .catch((err)=>{
+                this.setState({
+                    loadMsg:'无数据'
+                });
+                if(typeof err == 'string'){
+                    this.toastShow(err);
                 }
                 else{
-                    throw "网络请求失败";
+                    this.toastShow("出错了");
                 }
-            })
-            .then(json=>{
-                console.log(json);
-                if(json.status){
-                    if(json.data.length == 0){
-                        this.toastShow("教务系统抓取不到课表数据");
-                    }
-                    else{
-                        let dataSource = new ListView.DataSource({
-                            rowHasChanged: (row1, row2) => row1 !== row2
-                        });
-                        this.setState({
-                            dataSource: dataSource.cloneWithRows(json.data),
-                            isLoading: false
-                        });
-                    }
-                }
-                else{
-                    this.toastShow(json.info);
-                }
-            })
-            .catch(err =>{
-                this.toastShow(err);
             })
     }
 
-    fetchOption(){
-        const param = {
-            token: this.props.token,
-        };
-        fetch(__HOST__ + "/users/getCourseOption?"+ querystring.stringify(param))
-            .then((res) => {
-                if(res.ok){
-                    return res.json()
-                }
-                else{
-                    throw "网络请求失败";
-                }
-            })
-            .then(json=>{
-                console.log(json);
-                if(json.status){
-                    this.selected = json.data.selected;
-                    this.setState({
-                      options:json.data.options
-                    });
-                }
-                else{
-                    this.toastShow(json.info);
-                }
-            })
-            .catch(err =>{
+    fetchLoad(){
+        Gwxk.getCourse()
+        .then((json)=>{
+            //选择栏
+            this.selected = json.option.selected;
+            this.setState({
+                options:json.option.options
+            });
+            //课表信息
+            if(json.data.length == 0){
+                throw "教务系统抓取不到课表数据";
+            }
+            else{
+                let dataSource = new ListView.DataSource({
+                    rowHasChanged: (row1, row2) => row1 !== row2
+                });
+                this.setState({
+                    dataSource: dataSource.cloneWithRows(json.data),
+                    isLoading: false
+                });
+            }
+
+        })
+        .catch((err)=>{
+            if(typeof err == 'string'){
                 this.toastShow(err);
-            })
+            }
+            else{
+                this.toastShow("出错了");
+            }
+        })
     }
     renderAllList(){
         return(
@@ -155,7 +145,7 @@ export  default class Course extends Component{
                 <View style={[styles.courseTime,styles.courseTh]}>
                     <Text>第{Number(rowID)+1}大节</Text>
                 </View>
-                {list.slice(0,5).map((v,i)=>{
+                {list.map((v,i)=>{
                     return (
                     <View key={"courseIndex" + i} style={styles.courseSpan}>
                         <Text>{v}</Text>
@@ -168,7 +158,7 @@ export  default class Course extends Component{
     renderHeader(){
         return(
             <View style={[styles.courseRow,styles.courseTh]}>
-                {["","星期一","星期二","星期三","星期四","星期五"].map((v,i)=>{
+                {["","星期一","星期二","星期三","星期四","星期五","星期六","星期日"].map((v,i)=>{
                     if(i==0){
                         return (
                             <View key={"courseHeader" + i} style={styles.courseTime}>

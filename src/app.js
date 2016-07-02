@@ -10,7 +10,7 @@ import {
 
 import Tabbar, { Tab, RawContent, IconWithBar } from 'react-native-tabbar';
 var querystring=require('querystring');
-import {__HOST__} from './conf'
+import Gwxk from './lib/gwxk';
 //引入组件
 import Login from "./components/login.js"
 import Course from './components/course'
@@ -25,7 +25,6 @@ export default class App extends Component {
     this.toggle = false;
     this.state = {
       isLogin:false,
-      token:null,
       user:{},
       isLoading:true
     };
@@ -66,61 +65,47 @@ export default class App extends Component {
   }
 
   handelLogin(username, password){
+    console.log(username + password);
     if(username.trim().length<9) {
       return this.toastShow("学号长度不正确");
     }
     else if(password.trim().length==0){
       return this.toastShow("密码不能为空");
     }
-    const option = {
-      method:"POST",
-      headers:{
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body:querystring.stringify({username:username, password: password})
-    };
-    storage.save({
-      key: 'loginState',  //注意:请不要在key中使用_下划线符号!
-      rawData: {
-        'username':username,
-        'password':password
-      },
 
-      // 如果不指定过期时间，则会使用defaultExpires参数
-      // 如果设为null，则永不过期
-      expires: null
-    });
+    Gwxk.login({username:username, password: password})
+    .then((json) => {
+      console.log(json);
+      this.setState({
+        isLogin: true,
+        user:{
+          username:json.username,
+          name:json.name
+        },
+        isLoading: false
+      });
 
-    fetch(__HOST__ + "/users/login", option)
-        .then((res) => {
-          console.log(res);
-          if(res.ok){
-            return res.json()
-          }
-          else{
-            throw "网络请求失败";
-          }
-        })
-        .then(json=>{
-          console.log(json);
-          if(json.status){
-            this.setState({
-              isLogin: true,
-              token:json.data.token,
-              user:{
-                username:json.data.username,
-                name:json.data.name
-              },
-              isLoading: false
-            });
-          }
-          else{
-            this.toastShow("帐号或密码不正确");
-          }
-        })
-        .catch(err =>{
-          this.toastShow(err);
-        })
+      storage.save({
+        key: 'loginState',  //注意:请不要在key中使用_下划线符号!
+        rawData: {
+          'username':username,
+          'password':password
+        },
+
+        expires: null
+      });
+
+    })
+    .catch((err)=>{
+      if(typeof err == 'string'){
+        this.toastShow(err);
+      }
+      else{
+        console.warn("err");
+        console.warn(err);
+        this.toastShow("出错了");
+      }
+    })
   }
 
   checkStorage(){
@@ -156,18 +141,20 @@ export default class App extends Component {
   }
 
   logout(username){
-    storage.save({
-      key: 'loginState',  //注意:请不要在key中使用_下划线符号!
-      rawData: {
-        username:username,
-        password: null
-      }
-    });
-    this.setState({
-      isLogin: false,
-      token:null,
-      user:{username}
-    });
+    Gwxk.logout()
+    .then(()=>{
+      storage.save({
+        key: 'loginState',  //注意:请不要在key中使用_下划线符号!
+        rawData: {
+          username:username,
+          password: null
+        }
+      });
+      this.setState({
+        isLogin: false,
+        user:{username}
+      });
+    })
   }
 
   toastShow(text){
@@ -185,19 +172,19 @@ export default class App extends Component {
                   <Tab name="home">
                     <IconWithBar label="课表" size={18}/>
                     <RawContent>
-                      <Course token={this.state.token}/>
+                      <Course />
                     </RawContent>
                   </Tab>
                   <Tab name="camera">
                     <IconWithBar label="成绩" size={18}/>
                     <RawContent>
-                      <Score token={this.state.token}/>
+                      <Score />
                     </RawContent>
                   </Tab>
                   <Tab name="stats">
                     <IconWithBar label="等级" size={18}/>
                     <RawContent>
-                      <Cet token={this.state.token}/>
+                      <Cet />
                     </RawContent>
                   </Tab>
                   <Tab name="favorite">

@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 var querystring=require('querystring');
 
-import {__HOST__} from './../conf'
+import Gwxk from '../lib/gwxk'
+
 import Load from './loading'
 
 export  default class Score extends Component{
@@ -25,7 +26,8 @@ export  default class Score extends Component{
             dataSource: new ListView.DataSource({
                 rowHasChanged: (row1, row2) => row1 !== row2
             }),
-            options:[]
+            options:[],
+            loadMsg:''
         };
 
         this.selected = null;
@@ -49,7 +51,7 @@ export  default class Score extends Component{
                     </Picker>
                 </View>
                 { this.state.isLoading
-                    ? <Load>Data is loading!</Load>
+                    ? <Load>{this.state.loadMsg}</Load>
                     : this.selected
                     ? this.renderList()
                     :<Load>请选择学年</Load>
@@ -59,76 +61,59 @@ export  default class Score extends Component{
         );
     }
     fetchOption(){
-        const param = {
-            token: this.props.token,
-        };
-        fetch(__HOST__ + "/users/getScoreOption?"+ querystring.stringify(param))
-            .then((res) => {
-                if(res.ok){
-                    return res.json()
+        Gwxk.getScoreOption()
+        .then( options => {
+            this.setState({
+                options:options
+            });
+        })
+            .catch((err)=>{
+                if(typeof err == 'string'){
+                    this.toastShow(err);
                 }
                 else{
-                    throw "网络请求失败";
+                    this.toastShow("出错了");
                 }
             })
-            .then(json=>{
-                console.log(json);
-                if(json.status){
-                    this.selected = json.data.selected;
-                    this.setState({
-                        options:json.data.options
-                    });
-                }
-                else{
-                    this.toastShow(json.info);
-                }
-            })
-            .catch(err =>{
-                this.toastShow(err);
-            })
+
     }
     fetchData(selected){
         this.selected = selected;
 
         const param = {
-            token: this.props.token,
             xq: selected || null
         };
 
         this.setState({
-            isLoading: true
+            isLoading: true,
+            loadMsg:''
         });
 
-        fetch(__HOST__ + "/users/getScore?"+ querystring.stringify(param))
-            .then((res) => {
-                if(res.ok){
-                    return res.json()
+        Gwxk.getScore(param)
+            .then( data => {
+                if(data.length == 0){
+                    throw "教务系统抓取不到成绩数据";
                 }
                 else{
-                    throw "网络请求失败";
+                    let dataSource = new ListView.DataSource({
+                        rowHasChanged: (row1, row2) => row1 !== row2
+                    });
+                    this.setState({
+                        dataSource: dataSource.cloneWithRows(data),
+                        isLoading: false
+                    });
                 }
             })
-            .then(json=>{
-                if(json.status){
-                    if(json.data.length == 0){
-                        this.toastShow("教务系统抓取不到成绩数据");
-                    }
-                    else{
-                        let dataSource = new ListView.DataSource({
-                            rowHasChanged: (row1, row2) => row1 !== row2
-                        });
-                        this.setState({
-                            dataSource: dataSource.cloneWithRows(json.data),
-                            isLoading: false
-                        });
-                    }
+            .catch((err)=>{
+                this.setState({
+                    loadMsg:'无数据'
+                });
+                if(typeof err == 'string'){
+                    this.toastShow(err);
                 }
                 else{
-                    this.toastShow(json.info);
+                    this.toastShow("出错了");
                 }
-            })
-            .catch(err =>{
-                this.toastShow(err);
             })
     }
     renderList(){

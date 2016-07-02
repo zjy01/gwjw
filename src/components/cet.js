@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 var querystring=require('querystring');
 
-import {__HOST__} from './../conf'
+import Gwxk from '../lib/gwxk'
 import Load from './loading'
 
 export  default class Cet extends Component{
@@ -24,7 +24,8 @@ export  default class Cet extends Component{
             isLoading:false,
             dataSource: new ListView.DataSource({
                 rowHasChanged: (row1, row2) => row1 !== row2
-            })
+            }),
+            loadMsg:''
         };
 
     }
@@ -35,7 +36,7 @@ export  default class Cet extends Component{
         return(
             <View style={styles.container}>
                 { this.state.isLoading
-                    ? <Load>Data is loading!</Load>
+                    ? <Load>{this.state.loadMsg}</Load>
                     :this.renderList()
                 }
             </View>
@@ -48,39 +49,35 @@ export  default class Cet extends Component{
         };
 
         this.setState({
-            isLoading: true
+            isLoading: true,
+            loadMsg:''
         });
 
-        fetch(__HOST__ + "/users/getCet?"+ querystring.stringify(param))
-            .then((res) => {
-                if(res.ok){
-                    return res.json()
+        Gwxk.getCet()
+            .then( data => {
+                if(data.length == 0){
+                    throw "教务系统抓取不到等级考试数据";
                 }
                 else{
-                    throw "网络请求失败";
+                    let dataSource = new ListView.DataSource({
+                        rowHasChanged: (row1, row2) => row1 !== row2
+                    });
+                    this.setState({
+                        dataSource: dataSource.cloneWithRows(data),
+                        isLoading: false
+                    });
                 }
             })
-            .then(json=>{
-                if(json.status){
-                    if(json.data.length == 0){
-                        this.toastShow("教务系统抓取不到等级考试数据");
-                    }
-                    else{
-                        let dataSource = new ListView.DataSource({
-                            rowHasChanged: (row1, row2) => row1 !== row2
-                        });
-                        this.setState({
-                            dataSource: dataSource.cloneWithRows(json.data),
-                            isLoading: false
-                        });
-                    }
+            .catch((err)=>{
+                this.setState({
+                    loadMsg:'无数据'
+                });
+                if(typeof err == 'string'){
+                    this.toastShow(err);
                 }
                 else{
-                    this.toastShow(json.info);
+                    this.toastShow("出错了");
                 }
-            })
-            .catch(err =>{
-                this.toastShow(err);
             })
     }
     renderList(){

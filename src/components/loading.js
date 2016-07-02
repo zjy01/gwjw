@@ -9,7 +9,8 @@ import {
     View,
     ScrollView,
     Picker,
-    ListView
+    ListView,
+    ActivityIndicator
 } from 'react-native';
 var querystring=require('querystring');
 
@@ -20,7 +21,15 @@ export  default class Load extends Component{
     render(){
         return(
             <View style={styles.container}>
-                <Text>{this.props.children}</Text>
+                {
+                    this.props.children
+                        ? <Text>{this.props.children}</Text>
+                        :<ActivityIndicator
+                            animating={true}
+                            style={[styles.centering, {height: 80}]}
+                            size="large"
+                        />
+                }
             </View>
         );
     }
@@ -32,5 +41,10 @@ const styles = StyleSheet.create({
         height:height,
         justifyContent:"center",
         alignItems:"center"
-    }
+    },
+    centering: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 8
+    },
 });
