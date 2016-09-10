@@ -19,6 +19,8 @@ react-native run-android
 react-native start
 ```
 
+## 升级
+   + v1.2.0 `react-native@0.33`，课表间隔样式修复，使用`react-native-scrollable-tab-view`作为tab切换组件 
 ## issue
 
 + 如果编译问题，请尝试更新 `Android Support Repository`
